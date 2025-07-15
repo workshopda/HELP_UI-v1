@@ -193,9 +193,9 @@
 			</div>
 		</div>
 
-		<div class="fixed bg-transparent min-h-screen w-full flex font-primary z-50 text-black dark:text-white">
+		<div class="fixed bg-transparent min-h-screen w-full flex flex-col lg:flex-row font-primary z-50 text-black dark:text-white">
 			<!-- Left side - Form -->
-			<div class="w-full lg:w-1/2 xl:w-2/5 min-h-screen flex items-center justify-center p-6">
+			<div class="w-full lg:w-1/2 min-h-screen flex items-center justify-center p-6">
 				<div class="w-full max-w-md">
 					{#if ($config?.features.auth_trusted_header ?? false) || $config?.features.auth === false}
 						<!-- Loading state -->
@@ -438,24 +438,23 @@
 				</div>
 			</div>
 
-  <!-- Right Side: Full Height Video -->
-		<div class="hidden lg:flex lg:w-1/2 bg-gray-50 dark:bg-gray-800 items-center justify-center relative">
-			<div class="absolute inset-0 w-full h-full">
-			<video 
-				class="w-full h-full object-cover"
-				autoplay 
-				loop 
-				muted 
-				playsinline
-				controlsList="nodownload" 
-				disablePictureInPicture
-			>
-				<source src="http://localhost:5173/src/routes/auth/intro.mp4" type="video/mp4">
-				Your browser does not support the video tag.
-			</video>
+			<!-- Right Side: Full Height Video -->
+			<div class="hidden lg:flex lg:w-1/2 bg-gray-50 dark:bg-gray-800 items-center justify-center relative overflow-hidden">
+				<div class="absolute inset-0 w-full h-full">
+					<video 
+						class="w-full h-full object-cover"
+						autoplay 
+						loop 
+						muted 
+						playsinline
+						controlsList="nodownload" 
+						disablePictureInPicture
+					>
+						<source src="http://localhost:5173/src/routes/auth/intro.mp4" type="video/mp4">
+						Your browser does not support the video tag.
+					</video>
+				</div>
 			</div>
-		</div>
-
 		</div>
 	{/if}
 </div>

@@ -69,12 +69,12 @@
         <div class="flex max-w-full w-full mx-auto px-1 pt-0.5 bg-transparent">
             <div class="flex items-center w-full max-w-full">
                 {#if !$showSidebar}
-                    <div class="flex flex-col space-y-2 mr-1 self-start text-gray-600 dark:text-gray-400">
+                    <div class="flex flex-col items-center space-y-2 mr-1 text-gray-600 dark:text-gray-400">
                         <!-- Sidebar Toggle -->
                         <button
                             type="button"
                             aria-label="Toggle menu"
-                            class="relative bg-transparent hover:bg-gray-100 text-gray-800 dark:text-white dark:hover:bg-gray-800 transition rounded-full p-1.5 w-12 h-12 group"
+                            class="relative bg-transparent hover:bg-gray-100 text-gray-800 dark:text-white dark:hover:bg-gray-800 transition rounded-full p-1.5 w-12 h-12 group flex items-center justify-center"
                             on:click={() => {
                                 showSidebar.set(!$showSidebar);
                             }}
@@ -106,72 +106,70 @@
 
                         <!-- New Chat Button -->
                         {#if !$mobile}
-                            <div class="relative group">
-                                <Tooltip content={$i18n.t('New Chat')}>
-                                    <button
-                                        type="button"
-                                        aria-label="Add New Chat"
-                                        class="p-1 rounded-full text-gray-600 dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors"
-                                        on:click={() => {
-                                            newChat();
-                                        }}
-                                    >
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            class="w-7 h-7 text-gray-700 dark:text-gray-300"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke-width="1.5"
-                                            stroke="currentColor"
-                                            role="img"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M12 4.5v15m-7.5-7.5h15"
-                                            />
-                                        </svg>
-                                    </button>
-                                </Tooltip>
+                        <Tooltip content={$i18n.t('New Chat')}>
+                            <button
+                                type="button"
+                                aria-label="Add New Chat"
+                                class="bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition rounded-lg p-1.5 w-10 h-10 flex items-center justify-center border border-gray-300 dark:border-gray-600"
+                                on:click={() => {
+                                    newChat();
+                                }}
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="w-5 h-5 text-gray-700 dark:text-gray-300"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke-width="1.5"
+                                    stroke="currentColor"
+                                    role="img"
+                                    aria-hidden="true"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        d="M12 4.5v15m-7.5-7.5h15"
+                                    />
+                                </svg>
+                            </button>
+                        </Tooltip>
+                    {/if}
 
-                                <!-- Notes Icon -->
-                                {#if ($config?.features?.enable_notes ?? false) && ($user?.role === 'admin' || ($user?.permissions?.features?.notes ?? true))}
-                                    <div class="px-1.5 flex justify-center mt-2 text-gray-800 dark:text-gray-200">
-                                        <a
-                                            class="flex items-center justify-center w-full rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-900 transition"
-                                            href="/notes"
-                                            on:click={() => {
-                                                selectedChatId = null;
-                                                chatId.set('');
-                                                if ($mobile) {
-                                                    showSidebar.set(false);
-                                                }
-                                            }}
-                                            draggable="false"
-                                        >
-                                            <svg
-                                                class="size-5"
-                                                aria-hidden="true"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                width="24"
-                                                height="24"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    stroke="currentColor"
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    stroke-width="2"
-                                                    d="M10 3v4a1 1 0 0 1-1 1H5m4 8h6m-6-4h6m4-8v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7.914a1 1 0 0 1 .293-.707l3.914-3.914A1 1 0 0 1 9.914 3H18a1 1 0 0 1 1 1Z"
-                                                />
-                                            </svg>
-                                        </a>
-                                    </div>
-                                {/if}
-                            </div>
-                        {/if}
+                    <!-- Notes Icon -->
+                    {#if ($config?.features?.enable_notes ?? false) && ($user?.role === 'admin' || ($user?.permissions?.features?.notes ?? true))}
+                        <Tooltip content={$i18n.t('Notes')}>
+                            <a
+                                class="bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition rounded-lg p-1.5 w-10 h-10 flex items-center justify-center border border-gray-300 dark:border-gray-600"
+                                href="/notes"
+                                on:click={() => {
+                                    selectedChatId = null;
+                                    chatId.set('');
+                                    if ($mobile) {
+                                        showSidebar.set(false);
+                                    }
+                                }}
+                                draggable="false"
+                            >
+                                <svg
+                                    class="w-5 h-5 text-gray-700 dark:text-gray-300"
+                                    aria-hidden="true"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="24"
+                                    height="24"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke="currentColor"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M10 3v4a1 1 0 0 1-1 1H5m4 8h6m-6-4h6m4-8v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7.914a1 1 0 0 1 .293-.707l3.914-3.914A1 1 0 0 1 9.914 3H18a1 1 0 0 1 1 1Z"
+                                    />
+                                </svg>
+                            </a>
+                        </Tooltip>
+                    {/if}
                     </div>
                 {/if}
 

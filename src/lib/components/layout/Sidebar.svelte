@@ -516,33 +516,41 @@
     }}
 >
     <!-- Plus Icon -->
-    <button
-        type="button"
-        aria-label="Add New Chat"
-        class="p-1 rounded-full text-gray-600 dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors"
-    >
-			<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="w-5 h-5 text-gray-700 dark:text-gray-300"
-			fill="none"
-			viewBox="0 0 24 24"
-			stroke-width="1.5"
-			stroke="currentColor"
-			role="img"
-			aria-hidden="true"
+    <!-- Button with Border and Professional Styling -->
+		<button
+			type="button"
+			aria-label="Add New Chat"
+			class="p-1 rounded-full border border-gray-300 dark:border-gray-600 
+				text-gray-600 dark:text-gray-300 group-hover:text-black dark:group-hover:text-white 
+				dark:bg-gray-800 bg-white 
+				transition-all duration-200 hover:shadow-md"
 		>
-			<path
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				d="M12 4.5v15m-7.5-7.5h15"
-			/>
-		</svg>
-    </button>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="w-5 h-5"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke-width="1.5"
+				stroke="currentColor"
+				role="img"
+				aria-hidden="true"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M12 4.5v15m-7.5-7.5h15"
+				/>
+			</svg>
+		</button>
 
-    <!-- New Chat Label in Block Style -->
-    <div class="font-medium text-sm text-gray-800 dark:text-gray-200 font-primary select-none">
-        {$i18n.t('New Chat')}
-    </div>
+		<!-- New Chat Label with Border -->
+		<div
+			class="font-medium text-sm text-gray-800 dark:text-gray-200 font-primary select-none
+				border border-gray-300 dark:border-gray-600 rounded-md px-3 py-1.5
+				transition-colors hover:border-gray-400 dark:hover:border-gray-500"
+		>
+			{ $i18n.t('New Chat') }
+		</div>
 </a>
 
 		<!-- {#if $user?.role === 'admin'}

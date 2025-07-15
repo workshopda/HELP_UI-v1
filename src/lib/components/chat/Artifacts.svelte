@@ -1,8 +1,6 @@
 <script lang="ts">
     import { toast } from 'svelte-sonner';
     import { onMount, getContext, createEventDispatcher } from 'svelte';
-    import mermaid from 'mermaid';
-    import { v4 as uuidv4 } from 'uuid';
     import XMark from '../icons/XMark.svelte';
     import ArrowsPointingOut from '../icons/ArrowsPointingOut.svelte';
     import Tooltip from '../common/Tooltip.svelte';
@@ -57,9 +55,8 @@
         };
     }> = [];
     let selectedContentIdx = 0;
-    let currentTab: 'artifact' | 'code' | 'output' = 'code';
+    let currentTab: 'artifact' | 'code' | 'output' = 'artifact';
     let currentCode = '';
-    let mermaidHtml = null;
     let iframeElement: HTMLIFrameElement;
     let waitingForInput = false;
     let inputPrompt = '';
@@ -348,11 +345,7 @@
             toast.info(`Detected libraries: ${requiredLibraries.join(', ')}`);
         }
 
-        if (currentConfig?.code?.engine === 'jupyter') {
-            result = await executePythonViaJupyter(code, token);
-        } else {
-            result = await executePythonViaPyodide(code);
-        }
+        result = await executePythonViaPyodide(code);
 
         return {
             success: !result.stderr || result.stderr.trim() === '',
@@ -447,14 +440,22 @@
 
     function handleIncomingCode(newCode) {
         if (!newCode?.code) return;
+        
+        // Skip Python code blocks from appearing in artifacts
+        if (newCode.lang === 'python' || newCode.lang === 'py') {
+            return;
+        }
+        
+        const type = newCode.code.includes('<svg') ? 'svg' :
+            ['html', 'css', 'javascript'].includes(newCode.lang) ? 'iframe' :
+            null;
+
+        if (!type) return;
+
         const existingIndex = contents.findIndex(c => c.code === newCode.code);
         if (existingIndex >= 0) {
             selectedContentIdx = existingIndex;
         } else {
-            const type = newCode.lang === 'mermaid' ? 'mermaid' :
-                newCode.code.includes('<svg') ? 'svg' :
-                newCode.lang === 'python' ? 'python' :
-                'iframe';
             contents = [...contents, {
                 type,
                 content: newCode.code,
@@ -463,7 +464,7 @@
             }];
             selectedContentIdx = contents.length - 1;
         }
-        currentTab = 'code';
+        currentTab = 'artifact';
         showControls.set(true);
         showArtifacts.set(true);
     }
@@ -504,16 +505,28 @@
         }
     }
 
-    async function drawMermaidDiagram(code: string) {
-        try {
-            if (await mermaid.parse(code)) {
-                const id = `mermaid-${uuidv4()}`;
-                const { svg } = await mermaid.render(id, code);
-                mermaidHtml = svg;
-            }
-        } catch (error) {
-            console.error('Error rendering Mermaid:', error);
-        }
+    function downloadArtifact() {
+        const blob = new Blob([contents[selectedContentIdx].content], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `artifact-${$chatId}-${selectedContentIdx}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function downloadCode() {
+        const blob = new Blob([contents[selectedContentIdx].code], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `code-${$chatId}-${selectedContentIdx}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 
     function getContents() {
@@ -544,6 +557,10 @@
                             : block.slice(3, -3).trim();
                         
                         if (code) {
+                            // Skip Python code blocks
+                            if (lang === 'python' || lang === 'py') {
+                                return;
+                            }
                             codeBlocks.push({ lang, code });
                         }
                     } catch (e) {
@@ -554,7 +571,6 @@
                 let htmlContent = '';
                 let cssContent = '';
                 let jsContent = '';
-                const remainingBlocks = [];
 
                 codeBlocks.forEach((block) => {
                     const { lang, code } = block;
@@ -570,25 +586,16 @@
                         case 'js':
                             jsContent += code + '\n';
                             break;
-                        case 'mermaid':
-                            newContents.push({
-                                type: 'mermaid',
-                                content: code,
-                                code: code,
-                                collapsed: false
-                            });
-                            break;
-                        case 'python':
-                        case 'py':
-                            newContents.push({
-                                type: 'python',
-                                content: code,
-                                code: code,
-                                collapsed: false
-                            });
-                            break;
                         default:
-                            remainingBlocks.push(block);
+                            // Only process SVG if explicitly marked or starts with <svg
+                            if (lang === 'svg' || (!lang && code.trim().startsWith('<svg'))) {
+                                newContents.push({
+                                    type: 'svg',
+                                    content: code,
+                                    code: code,
+                                    collapsed: false
+                                });
+                            }
                     }
                 });
 
@@ -634,27 +641,6 @@
                         collapsed: false
                     });
                 }
-
-                remainingBlocks.forEach((block) => {
-                    const { lang, code } = block;
-                    
-                    if (lang === 'svg' || (!lang && code.trim().startsWith('<svg'))) {
-                        newContents.push({
-                            type: 'svg',
-                            content: code,
-                            code: code,
-                            collapsed: false
-                        });
-                    }
-                    else if (code) {
-                        newContents.push({
-                            type: 'text',
-                            content: code,
-                            code: code,
-                            collapsed: false
-                        });
-                    }
-                });
             }
         });
 
@@ -665,7 +651,6 @@
             showArtifacts.set(false);
         } else {
             selectedContentIdx = contents.length - 1;
-            currentCode = contents[selectedContentIdx]?.code || '';
         }
     }
 
@@ -674,9 +659,6 @@
             direction === 'prev'
                 ? Math.max(selectedContentIdx - 1, 0)
                 : Math.min(selectedContentIdx + 1, contents.length - 1);
-        if (contents[selectedContentIdx]) {
-            currentCode = contents[selectedContentIdx].code || '';
-        }
     }
 
     function switchTab(tab: 'artifact' | 'code' | 'output') {
@@ -724,30 +706,6 @@
         }
     };
 
-    const downloadArtifact = () => {
-        const blob = new Blob([contents[selectedContentIdx].content], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `artifact-${$chatId}-${selectedContentIdx}.html`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    };
-
-    const downloadCode = () => {
-        const blob = new Blob([currentCode], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `code-${$chatId}-${selectedContentIdx}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    };
-
     onMount(async () => {
         loadProxyConfig();
         
@@ -757,40 +715,14 @@
             }
         });
 
-        const initMermaid = () => {
-            if (document.documentElement.classList.contains('dark')) {
-                mermaid.initialize({
-                    startOnLoad: true,
-                    theme: 'dark',
-                    securityLevel: 'loose'
-                });
-            } else {
-                mermaid.initialize({
-                    startOnLoad: true,
-                    theme: 'default',
-                    securityLevel: 'loose'
-                });
-            }
-        };
-
-        let mermaidTimeout;
-        window.addEventListener('theme-change', () => {
-            clearTimeout(mermaidTimeout);
-            mermaidTimeout = setTimeout(initMermaid, 300);
-        });
-
-        initMermaid();
-
         return () => {
             unsubscribe();
             configUnsubscribe();
-            clearTimeout(mermaidTimeout);
             if (activeWorker) {
                 activeWorker.terminate();
                 activeWorker = null;
             }
         };
-        
     });
 </script>
 
@@ -879,7 +811,10 @@
                 {/if}
                 <Tooltip text="Close">
                     <button
-                        on:click={() => showArtifacts.set(false)}
+                        on:click={() => {
+                            showArtifacts.set(false);
+                            showControls.set(false);
+                        }}
                         class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
                     >
                         <XMark class="w-5 h-5" />
@@ -888,39 +823,9 @@
             </div>
         </div>
 
-        <div class="flex border-b dark:border-gray-700">
-            <button
-                class={`px-4 py-2 text-sm font-medium ${currentTab === 'artifact' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
-                on:click={() => switchTab('artifact')}
-            >
-                Artifact
-            </button>
-            <button
-                class={`px-4 py-2 text-sm font-medium ${currentTab === 'code' ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
-                on:click={() => switchTab('code')}
-            >
-                Code
-            </button>
-        </div>
-
         <div class="flex-1 overflow-auto">
             {#if currentTab === 'artifact'}
-                {#if contents[selectedContentIdx].type === 'mermaid'}
-                    <div class="p-4">
-                        {#if mermaidHtml}
-                            {@html mermaidHtml}
-                        {:else}
-                            <div class="flex items-center justify-center h-full">
-                                <button
-                                    on:click={() => drawMermaidDiagram(contents[selectedContentIdx].code)}
-                                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                                >
-                                    Render Diagram
-                                </button>
-                            </div>
-                        {/if}
-                    </div>
-                {:else if contents[selectedContentIdx].type === 'svg'}
+                {#if contents[selectedContentIdx].type === 'svg'}
                     <div class="p-4 overflow-auto">
                         <SvgPanZoom svgContent={contents[selectedContentIdx].content} />
                     </div>
@@ -932,10 +837,6 @@
                         on:load={iframeLoadHandler}
                         sandbox="allow-scripts allow-same-origin"
                     />
-                {:else}
-                    <div class="p-4 overflow-auto">
-                        <pre class="whitespace-pre-wrap break-words dark:text-white"><code>{contents[selectedContentIdx].content}</code></pre>
-                    </div>
                 {/if}
             {:else if currentTab === 'code'}
                 <div class="relative h-full">
@@ -952,95 +853,11 @@
                                 {/if}
                             </button>
                         </Tooltip>
-                        {#if contents[selectedContentIdx].type === 'python'}
-                            <!--<Tooltip text="Run Code">
-                                <button
-                                    on:click={() => runPythonCode(selectedContentIdx)}
-                                    disabled={contents[selectedContentIdx].running || contents[selectedContentIdx].installing}
-                                    class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {#if contents[selectedContentIdx].running}
-                                        <span class="text-sm text-gray-500 dark:text-gray-400">Running...</span>
-                                    {:else if contents[selectedContentIdx].installing}
-                                        <span class="text-sm text-gray-500 dark:text-gray-400">Installing...</span>
-                                    {:else}
-                                        <span class="text-sm text-blue-600 dark:text-blue-400">Run</span>
-                                    {/if}
-                                </button>
-                            </Tooltip>-->
-                        {/if}
                     </div>
-                    <CodeEditor
-                        value={contents[selectedContentIdx].code}
-                        readOnly={true}
-                        language={contents[selectedContentIdx].type === 'python' ? 'python' : contents[selectedContentIdx].type === 'mermaid' ? 'mermaid' : 'html'}
-                        class="h-full"
-                    />
+                    <pre class="whitespace-pre-wrap p-4 overflow-auto h-full dark:text-gray-300">
+                        <code>{contents[selectedContentIdx].code}</code>
+                    </pre>
                 </div>
-
-                {#if contents[selectedContentIdx].type === 'python' && contents[selectedContentIdx].output}
-                    <div class="border-t dark:border-gray-700 p-4 overflow-auto">
-                        {#if contents[selectedContentIdx].output.installedPackages?.length > 0}
-                            <div class="mb-4 p-3 bg-green-100 dark:bg-green-900 rounded">
-                                <h4 class="font-medium text-green-800 dark:text-green-200">Installed Packages:</h4>
-                                <p class="text-sm text-green-700 dark:text-green-300">
-                                    {contents[selectedContentIdx].output.installedPackages.join(', ')}
-                                </p>
-                            </div>
-                        {/if}
-
-                        {#if contents[selectedContentIdx].output.executionTime}
-                            <div class="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                                Execution time: {contents[selectedContentIdx].output.executionTime.toFixed(2)}ms
-                            </div>
-                        {/if}
-
-                        {#if contents[selectedContentIdx].output.stdout}
-                            <div class="mb-4">
-                                <h4 class="font-medium dark:text-white">Output:</h4>
-                                <pre class="whitespace-pre-wrap break-words bg-gray-100 dark:bg-gray-800 p-3 rounded text-sm"><code class="dark:text-gray-300">{contents[selectedContentIdx].output.stdout}</code></pre>
-                            </div>
-                        {/if}
-
-                        {#if contents[selectedContentIdx].output.stderr}
-                            <div class="mb-4">
-                                <h4 class="font-medium text-red-600 dark:text-red-400">Errors:</h4>
-                                <pre class="whitespace-pre-wrap break-words bg-red-50 dark:bg-red-900/20 p-3 rounded text-sm"><code class="text-red-600 dark:text-red-400">{contents[selectedContentIdx].output.stderr}</code></pre>
-                            </div>
-                        {/if}
-
-                        {#if contents[selectedContentIdx].output.files?.length > 0}
-                            <div class="mb-4">
-                                <h4 class="font-medium dark:text-white">Generated Files:</h4>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                                    {#each contents[selectedContentIdx].output.files as file}
-                                        {#if file.type.startsWith('image/')}
-                                            <div class="border rounded overflow-hidden dark:border-gray-700">
-                                                <img
-                                                    src={file.data}
-                                                    alt="Generated image"
-                                                    class="w-full h-auto"
-                                                />
-                                            </div>
-                                        {:else if file.type === 'application/json'}
-                                            <div class="border rounded p-3 dark:border-gray-700">
-                                                <pre class="text-xs overflow-auto max-h-60 dark:text-gray-300">{JSON.stringify(JSON.parse(atob(file.data.split(',')[1])), null, 2)}</pre>
-                                            </div>
-                                        {:else if file.type === 'text/html'}
-                                            <div class="border rounded overflow-hidden dark:border-gray-700">
-                                                <iframe
-                                                    srcDoc={atob(file.data.split(',')[1])}
-                                                    class="w-full h-64 border-0"
-                                                    sandbox="allow-scripts allow-same-origin"
-                                                />
-                                            </div>
-                                        {/if}
-                                    {/each}
-                                </div>
-                            </div>
-                        {/if}
-                    </div>
-                {/if}
             {/if}
         </div>
     {:else}
